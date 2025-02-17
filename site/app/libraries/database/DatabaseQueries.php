@@ -1189,8 +1189,6 @@ WHERE term=? AND course=? AND user_id=?",
         }
     }
 
-    
-
     /**
      * Gets the group that the user is in for a given class (used on homepage)
      *
