@@ -1122,57 +1122,73 @@ WHERE term=? AND course=? AND user_id=?",
     }
     
     /**
-     * @param string $user_id
-     * @param string $semester
-     * @param string $course
+     * Unregisters a user from a course.
+     *
+     * @param User   $user  The user to be unregistered.
+     * @param string $term  The academic term.
+     * @param string $course The course identifier.
+     * @return bool True if successful, false otherwise.
      */
-    public function unregisterCourseUser(User $user, string $semester, string $course): bool {
+    public function unregisterCourseUser(User $user, string $term, string $course): bool {
         $user_id = $user->getId();
-    
+
         try {
+            // start transactions
             $this->submitty_db->beginTransaction();
             $this->course_db->beginTransaction();
-    
-            // Check if the user is enrolled
-            $is_enrolled = $this->submitty_db->rowExists(
-                "SELECT 1 FROM courses_users WHERE user_id = ? AND term = ? AND course = ?",
-                [$user_id, $semester, $course]
-            );
-    
-            if (!$is_enrolled) {
-                $this->submitty_db->rollback();
-                $this->course_db->rollback();
+
+            // check if enrolled
+            $is_enrolled = $this->submitty_db->query(
+                "SELECT COUNT(*) FROM courses_users WHERE user_id = ? AND term = ? AND course = ?",
+                [$user_id, $term, $course]
+            )->fetchColumn();
+
+            if ($is_enrolled == 0) {
+                $this->submitty_db->rollBack();
+                $this->course_db->rollBack();
+                $this->core->addErrorMessage("You are not registered in this course.");
                 return false;
             }
-    
+
+            // rm user from courses_users
             $this->submitty_db->query(
                 "DELETE FROM courses_users WHERE user_id = ? AND term = ? AND course = ?",
-                [$user_id, $semester, $course]
+                [$user_id, $term, $course]
             );
-    
+
+            // reset user details
             $this->course_db->query(
-                "UPDATE users SET rotating_section = NULL, registration_subsection = NULL, registration_type = NULL 
-                 WHERE user_id = ?",
+                "UPDATE users SET 
+                    rotating_section = NULL, 
+                    registration_subsection = NULL, 
+                    registration_type = NULL 
+                WHERE user_id = ?",
                 [$user_id]
             );
-    
+
+            // rm from grading_registration
             $this->course_db->query(
                 "DELETE FROM grading_registration WHERE user_id = ?",
                 [$user_id]
             );
-    
+
+            // commit transactions
             $this->submitty_db->commit();
             $this->course_db->commit();
+
+            $this->core->addSuccessMessage("Successfully unregistered from the course.");
             return true;
         } catch (\Exception $e) {
-            // if fail roll back
-            $this->submitty_db->rollback();
-            $this->course_db->rollback();
-    
+            // rollback if fail
+            $this->submitty_db->rollBack();
+            $this->course_db->rollBack();
+
             error_log("Error unregistering user {$user_id} from {$course}: " . $e->getMessage());
+            $this->core->addErrorMessage("An error occurred while unregistering. Please try again.");
             return false;
         }
     }
+
     
 
     /**
