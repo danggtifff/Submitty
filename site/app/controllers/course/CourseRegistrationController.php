@@ -35,30 +35,31 @@ class CourseRegistrationController extends AbstractController {
         $this->core->loadCourseConfig($term, $course);
         $this->core->loadCourseDatabase();
     
-        // prevent URL tampering by ensuring the user came from selfUnregister()
+        // prevent URL tampering
         if (!$this->core->getSession()->get('unregister_confirmed')) {
             $this->core->addErrorMessage('Invalid request. Please try again.');
             return new RedirectResponse($this->core->buildUrl(['home']));
         }
     
-        // if user confirmed, unregister
+        // if confirmed, unregister
         if (isset($_GET['confirmed']) && $_GET['confirmed'] === 'true') {
             // Remove confirmation flag after checking
             $this->core->getSession()->remove('unregister_confirmed');
     
-            // unregister user from course
+            // Unregister user from course
             $this->unregisterCourseUser($term, $course);
             $this->core->addSuccessMessage('You have successfully unregistered from the course.');
     
             return new RedirectResponse($this->core->buildUrl(['home']));
         }
     
-        // else render the JavaScript confirmation popup
-        return new Response($this->core->getTwig()->render('courses/unregister_confirm.js.twig', [
+        // render confirmation popup
+        return new Response($this->core->getOutput()->renderTwigTemplate('UnregisterConfirm.js.twig', [
             'confirm_url' => $this->core->buildUrl(['courses', $term, $course, 'alert_redirect'], ['confirmed' => 'true']),
             'cancel_url' => $this->core->buildCourseUrl()
         ]));
     }
+    
     
     #[Route("/courses/{term}/{course}/register")]
     public function selfRegister(string $term, string $course): RedirectResponse {

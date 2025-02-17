@@ -210,13 +210,16 @@ class GlobalController extends AbstractController {
             ]);
         }
 
-        if ($this->core->getQueries()->getSelfRegistrationType($this->core->getConfig()->getTerm(), $this->core->getConfig()->getCourse()) !== 0) {
+        if ($this->core->getQueries()->getSelfRegistrationType(
+            $this->core->getConfig()->getTerm(),
+            $this->core->getConfig()->getCourse()
+            ) > 0) {  // only if self-registration is enabled
             $sidebar_buttons[] = new NavButton($this->core, [
-                "href" => $this->core->buildCourseUrl(['unregister_from_course']),
-                "title" => "Unregister from course",
-                "icon" => "fa-envelope",
-            ]);
-        }
+            "href" => $this->core->buildCourseUrl(['courses', $this->core->getConfig()->getTerm(), $this->core->getConfig()->getCourse(), 'alert_redirect']),
+            "title" => "Unregister from Course",
+            "icon" => "fa-envelope",
+        ]);
+    }
 
         // --------------------------------------------------------------------------
 
