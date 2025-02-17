@@ -1120,6 +1120,60 @@ WHERE term=? AND course=? AND user_id=?",
             }
         }
     }
+    
+    /**
+     * @param string $user_id
+     * @param string $semester
+     * @param string $course
+     */
+    public function unregisterCourseUser(User $user, string $semester, string $course): bool {
+        $user_id = $user->getId();
+    
+        try {
+            $this->submitty_db->beginTransaction();
+            $this->course_db->beginTransaction();
+    
+            // Check if the user is enrolled
+            $is_enrolled = $this->submitty_db->rowExists(
+                "SELECT 1 FROM courses_users WHERE user_id = ? AND term = ? AND course = ?",
+                [$user_id, $semester, $course]
+            );
+    
+            if (!$is_enrolled) {
+                $this->submitty_db->rollback();
+                $this->course_db->rollback();
+                return false;
+            }
+    
+            $this->submitty_db->query(
+                "DELETE FROM courses_users WHERE user_id = ? AND term = ? AND course = ?",
+                [$user_id, $semester, $course]
+            );
+    
+            $this->course_db->query(
+                "UPDATE users SET rotating_section = NULL, registration_subsection = NULL, registration_type = NULL 
+                 WHERE user_id = ?",
+                [$user_id]
+            );
+    
+            $this->course_db->query(
+                "DELETE FROM grading_registration WHERE user_id = ?",
+                [$user_id]
+            );
+    
+            $this->submitty_db->commit();
+            $this->course_db->commit();
+            return true;
+        } catch (\Exception $e) {
+            // if fail roll back
+            $this->submitty_db->rollback();
+            $this->course_db->rollback();
+    
+            error_log("Error unregistering user {$user_id} from {$course}: " . $e->getMessage());
+            return false;
+        }
+    }
+    
 
     /**
      * Gets the group that the user is in for a given class (used on homepage)
