@@ -43,10 +43,10 @@ class CourseRegistrationController extends AbstractController {
     
         // if confirmed, unregister
         if (isset($_GET['confirmed']) && $_GET['confirmed'] === 'true') {
-            // Remove confirmation flag after checking
+            // rm confirm flag
             $this->core->getSession()->remove('unregister_confirmed');
     
-            // Unregister user from course
+            // unregister
             $this->unregisterCourseUser($term, $course);
             $this->core->addSuccessMessage('You have successfully unregistered from the course.');
     
